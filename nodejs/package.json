@@ -1,6 +1,6 @@
 {
   "name": "aeadsafe",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "High-level, misuse-resistant secret key-based cipher library using platform-native AEAD algorithms",
   "main": "./lib/index.js",
   "type": "module",
