@@ -1,0 +1,43 @@
+{
+  "name": "aeadsafe",
+  "version": "0.1.0",
+  "description": "High-level, misuse-resistant secret key-based cipher library using platform-native AEAD algorithms",
+  "main": "./lib/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "prepack": "npm run build"
+  },
+  "files": [
+    "lib/**/*",
+    "LICENSE",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luczsoma/aeadsafe.git"
+  },
+  "keywords": [
+    "aead",
+    "safe",
+    "encryption",
+    "decryption",
+    "cipher",
+    "misuse-resistant",
+    "high-level",
+    "cryptography"
+  ],
+  "author": "Soma Lucz",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/luczsoma/aeadsafe/issues"
+  },
+  "homepage": "https://github.com/luczsoma/aeadsafe#readme",
+  "dependencies": {
+    "@types/node": "^17.0.35",
+    "asn1js": "^3.0.5"
+  },
+  "devDependencies": {
+    "typescript": "^4.6.4"
+  }
+}
