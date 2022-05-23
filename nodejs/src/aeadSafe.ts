@@ -104,7 +104,7 @@ export function lockSafe(
   });
 
   return {
-    result: encodeBuffer(asn1Buffer, resultEncoding),
+    lockedSafe: encodeBuffer(asn1Buffer, resultEncoding),
     key: encodeBuffer(key, keyEncoding),
   };
 }
