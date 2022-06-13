@@ -1,4 +1,6 @@
 export { lockSafe, unlockSafe } from "./aeadSafe.js";
-export { Encoding } from "./encoding";
-export { LockSafeResult } from "./lockSafeResult";
-export { UnlockSafeResult } from "./unlockSafeResult";
+export type { KeyEncoding } from "./keyEncoding.js";
+export type { LockedSafeEncoding } from "./lockedSafeEncoding.js";
+export type { LockSafeResult } from "./lockSafeResult.js";
+export type { UnlockedSafeEncoding } from "./unlockedSafeEncoding.js";
+export type { UnlockSafeResult } from "./unlockSafeResult.js";

@@ -2,11 +2,12 @@
   "name": "aeadsafe",
   "version": "0.2.0",
   "description": "High-level, misuse-resistant secret key-based cipher library using platform-native AEAD algorithms",
-  "main": "./lib/index.js",
   "type": "module",
+  "exports": "./lib/index.js",
   "scripts": {
-    "build": "tsc",
-    "prepack": "npm run build"
+    "build": "tsc --project tsconfig.lib.json",
+    "prepack": "npm run build",
+    "test": "ts-mocha --project tsconfig.test.json --loader=ts-node/esm ./test/**/*.spec.ts"
   },
   "files": [
     "lib/**/*",
@@ -34,10 +35,16 @@
   },
   "homepage": "https://github.com/luczsoma/aeadsafe#readme",
   "dependencies": {
-    "@types/node": "^17.0.35",
+    "@types/node": "^17.0.42",
     "asn1js": "^3.0.5"
   },
   "devDependencies": {
-    "typescript": "^4.6.4"
+    "@types/chai": "^4.3.1",
+    "@types/mocha": "^9.1.1",
+    "chai": "^4.3.6",
+    "mocha": "^10.0.0",
+    "ts-mocha": "^10.0.0",
+    "ts-node": "^10.8.1",
+    "typescript": "^4.7.3"
   }
 }

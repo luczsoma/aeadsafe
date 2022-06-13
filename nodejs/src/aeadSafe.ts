@@ -1,110 +1,89 @@
 import { AsnType, Integer, OctetString, Sequence, verifySchema } from "asn1js";
-import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
-import { DecodedAeadSafe } from "./decodedAeadSafe";
-import { EncodedAeadSafe } from "./encodedAeadSafe";
-import { Encoding } from "./encoding";
-import { LockSafeResult } from "./lockSafeResult";
-import { UnlockSafeResult } from "./unlockSafeResult";
+import type { AeadSafeImplementation } from "./aeadSafeImplementation.js";
+import { ChaCha20Poly1305 } from "./implementation/chaCha20Poly1305.js";
+import type { KeyEncoding } from "./keyEncoding.js";
+import { keyEncodings } from "./keyEncoding.js";
+import type { LockedSafeEncoding } from "./lockedSafeEncoding.js";
+import { lockedSafeEncodings } from "./lockedSafeEncoding.js";
+import type { LockSafeResult } from "./lockSafeResult.js";
+import type { UnlockedSafeEncoding } from "./unlockedSafeEncoding.js";
+import { unlockedSafeEncodings } from "./unlockedSafeEncoding.js";
+import type { UnlockSafeResult } from "./unlockSafeResult.js";
 
-const AEADSAFE_VERSION = 1;
-
-const ALGORITHM = "chacha20-poly1305";
-const KEY_LENGTH_BYTES = 32;
-const INITIALIZATION_VECTOR_LENGTH_BYTES = 12;
-const AUTH_TAG_LENGTH_BYTES = 16;
-const MAX_PLAINTEXT_LENGTH_BYTES = 2 ** 38 - 64;
-
-const ASN1_SCHEMA = new Sequence({
-  name: "AEADSafe",
+const AEADSAFE_WRAPPER_ASN1_SCHEMA = new Sequence({
+  name: "AEADSafeWrapper",
   value: [
     new Integer({
-      name: "AeadSafeVersion",
+      name: "AEADSafeVersion",
     }),
     new OctetString({
-      name: "InitializationVector",
-      isConstructed: false,
-    }),
-    new OctetString({
-      name: "AssociatedData",
-      isConstructed: false,
-    }),
-    new OctetString({
-      name: "CipherText",
-      isConstructed: false,
-    }),
-    new OctetString({
-      name: "AuthenticationTag",
-      isConstructed: false,
+      name: "AEADSafe",
     }),
   ],
 });
 
+const AEADSAFE_VERSIONS: ReadonlyMap<number, AeadSafeImplementation> = new Map([
+  [1, new ChaCha20Poly1305()],
+]);
+
 export function lockSafe(
   secretData: Buffer | string,
   additionalPublicData: Buffer | string,
-  resultEncoding: "binary",
+  lockedSafeEncoding: "binary",
   keyEncoding: "binary"
 ): LockSafeResult<Buffer, Buffer>;
 export function lockSafe(
   secretData: Buffer | string,
   additionalPublicData: Buffer | string,
-  resultEncoding: "binary",
-  keyEncoding: "base64" | "hex"
+  lockedSafeEncoding: "binary",
+  keyEncoding: "base64"
 ): LockSafeResult<Buffer, string>;
 export function lockSafe(
   secretData: Buffer | string,
   additionalPublicData: Buffer | string,
-  resultEncoding: "base64" | "hex",
+  lockedSafeEncoding: "base64",
   keyEncoding: "binary"
 ): LockSafeResult<string, Buffer>;
 export function lockSafe(
   secretData: Buffer | string,
   additionalPublicData: Buffer | string,
-  resultEncoding: "base64" | "hex",
-  keyEncoding: "base64" | "hex"
+  lockedSafeEncoding: "base64",
+  keyEncoding: "base64"
 ): LockSafeResult<string, string>;
 export function lockSafe(
   secretData: Buffer | string,
   additionalPublicData: Buffer | string,
-  resultEncoding: Encoding,
-  keyEncoding: Encoding
+  lockedSafeEncoding: LockedSafeEncoding,
+  keyEncoding: KeyEncoding
 ): LockSafeResult<Buffer | string, Buffer | string> {
   validateBufferOrString(secretData, "secretData");
   validateBufferOrString(additionalPublicData, "additionalPublicData");
-  validateEncoding(resultEncoding, "resultEncoding");
-  validateEncoding(keyEncoding, "keyEncoding");
+  validateValue(lockedSafeEncoding, lockedSafeEncodings, "lockedSafeEncoding");
+  validateValue(keyEncoding, keyEncodings, "keyEncoding");
 
-  const plainText = getAsBuffer(secretData);
-  validatePlainTextLength(plainText);
-
-  const associatedData = getAsBuffer(additionalPublicData);
-
-  const key = randomBytes(KEY_LENGTH_BYTES);
-  const initializationVector = randomBytes(INITIALIZATION_VECTOR_LENGTH_BYTES);
-
-  const cipher = createCipheriv(ALGORITHM, key, initializationVector, {
-    authTagLength: AUTH_TAG_LENGTH_BYTES,
-  });
-
-  if (associatedData.length > 0) {
-    cipher.setAAD(associatedData, {
-      plaintextLength: plainText.length,
-    });
+  const latestAeadSafeVersion = Math.max(...AEADSAFE_VERSIONS.keys());
+  const latestAeadSafeImplementation = AEADSAFE_VERSIONS.get(
+    latestAeadSafeVersion
+  );
+  if (latestAeadSafeImplementation === undefined) {
+    throw new Error("version not found");
   }
 
-  const cipherText = Buffer.concat([cipher.update(plainText), cipher.final()]);
-  const authenticationTag = cipher.getAuthTag();
+  const plainText = getBufferOrStringAsBuffer(secretData);
+  const associatedData = getBufferOrStringAsBuffer(additionalPublicData);
 
-  const asn1Buffer = encodeAsn1({
-    aeadSafeVersion: AEADSAFE_VERSION,
-    initializationVector,
-    associatedData,
-    cipherText,
-    authenticationTag,
-  });
+  const { unwrappedLockedSafe, key } = latestAeadSafeImplementation.lockSafe(
+    plainText,
+    associatedData
+  );
+
+  const wrappedLockedSafe = wrapLockedSafe(
+    latestAeadSafeVersion,
+    unwrappedLockedSafe
+  );
 
   return {
-    lockedSafe: encodeBuffer(asn1Buffer, resultEncoding),
+    lockedSafe: encodeBuffer(wrappedLockedSafe, lockedSafeEncoding),
     key: encodeBuffer(key, keyEncoding),
   };
 }
@@ -112,148 +91,121 @@ export function lockSafe(
 export function unlockSafe(
   key: Buffer | string,
   lockedSafe: Buffer | string,
-  resultEncoding: "binary"
+  unlockedSafeEncoding: "binary"
 ): UnlockSafeResult<Buffer>;
 export function unlockSafe(
   key: Buffer | string,
   lockedSafe: Buffer | string,
-  resultEncoding: "base64" | "hex"
+  unlockedSafeEncoding: "string"
 ): UnlockSafeResult<string>;
 export function unlockSafe(
   key: Buffer | string,
   lockedSafe: Buffer | string,
-  resultEncoding: Encoding
+  unlockedSafeEncoding: UnlockedSafeEncoding
 ): UnlockSafeResult<Buffer | string> {
   validateBufferOrString(key, "key");
   validateBufferOrString(lockedSafe, "key");
-  validateEncoding(resultEncoding, "resultEncoding");
-
-  const keyBuffer = getAsBuffer(key);
-  const asn1Buffer = getAsBuffer(lockedSafe);
-
-  const {
-    initializationVector,
-    associatedData,
-    cipherText,
-    authenticationTag,
-  } = decodeAsn1(asn1Buffer);
-
-  const decipher = createDecipheriv(
-    ALGORITHM,
-    keyBuffer,
-    initializationVector,
-    {
-      authTagLength: AUTH_TAG_LENGTH_BYTES,
-    }
+  validateValue(
+    unlockedSafeEncoding,
+    unlockedSafeEncodings,
+    "unlockedSafeEncoding"
   );
 
-  if (associatedData.length > 0) {
-    decipher.setAAD(associatedData, {
-      plaintextLength: cipherText.length,
-    });
+  const wrappedLockedSafe = decodeBuffer(lockedSafe);
+  const { version, unwrappedLockedSafe } = unwrapLockedSafe(wrappedLockedSafe);
+
+  const aeadSafeImplementation = AEADSAFE_VERSIONS.get(version);
+  if (aeadSafeImplementation === undefined) {
+    throw new Error("version not found");
   }
 
-  decipher.setAuthTag(authenticationTag);
-
-  const plainText = Buffer.concat([
-    decipher.update(cipherText),
-    decipher.final(),
-  ]);
+  const keyBytes = decodeBuffer(key);
+  const { plainText, associatedData } = aeadSafeImplementation.unlockSafe(
+    unwrappedLockedSafe,
+    keyBytes
+  );
 
   return {
-    secretData: encodeBuffer(plainText, resultEncoding),
-    additionalPublicData: encodeBuffer(associatedData, resultEncoding),
+    secretData: encodeBuffer(plainText, unlockedSafeEncoding),
+    additionalPublicData: encodeBuffer(associatedData, unlockedSafeEncoding),
   };
 }
 
-function encodeAsn1({
-  aeadSafeVersion,
-  initializationVector,
-  associatedData,
-  cipherText,
-  authenticationTag,
-}: DecodedAeadSafe): Buffer {
+function wrapLockedSafe(version: number, unwrappedLockedSafe: Buffer): Buffer {
   const asn1 = new Sequence({
     value: [
       new Integer({
-        value: aeadSafeVersion,
+        value: version,
       }),
       new OctetString({
-        valueHex: initializationVector,
-      }),
-      new OctetString({
-        valueHex: associatedData,
-      }),
-      new OctetString({
-        valueHex: cipherText,
-      }),
-      new OctetString({
-        valueHex: authenticationTag,
+        valueHex: unwrappedLockedSafe,
       }),
     ],
   });
-
   const ber = asn1.toBER();
   return Buffer.from(ber);
 }
 
-function decodeAsn1(asn1Buffer: Buffer): DecodedAeadSafe {
-  const { verified, result } = verifySchema(asn1Buffer, ASN1_SCHEMA);
+function unwrapLockedSafe(wrappedLockedSafe: Buffer): {
+  version: number;
+  unwrappedLockedSafe: Buffer;
+} {
+  const { verified, result } = verifySchema(
+    wrappedLockedSafe,
+    AEADSAFE_WRAPPER_ASN1_SCHEMA
+  );
   if (!verified) {
     throw new Error("decode error");
   }
 
-  const verifiedResult = result as AsnType & EncodedAeadSafe;
+  const verifiedResult = result as AsnType & {
+    AEADSafeVersion: Integer;
+    AEADSafe: OctetString;
+  };
 
   return {
-    aeadSafeVersion: verifiedResult.AeadSafeVersion.valueBlock.valueDec,
-    initializationVector: Buffer.from(
-      verifiedResult.InitializationVector.valueBlock.valueHexView
-    ),
-    associatedData: Buffer.from(
-      verifiedResult.AssociatedData.valueBlock.valueHexView
-    ),
-    cipherText: Buffer.from(verifiedResult.CipherText.valueBlock.valueHexView),
-    authenticationTag: Buffer.from(
-      verifiedResult.AuthenticationTag.valueBlock.valueHexView
+    version: verifiedResult.AEADSafeVersion.valueBlock.valueDec,
+    unwrappedLockedSafe: Buffer.from(
+      verifiedResult.AEADSafe.valueBlock.valueHexView
     ),
   };
 }
 
-function validateBufferOrString(value: Buffer | string, name: string): void {
+function validateBufferOrString(value: any, name: string): void {
   if (!(value instanceof Buffer) && typeof value !== "string") {
     throw new Error(`${name} must be a Buffer or a literal string`);
   }
 }
 
-function validateEncoding(encoding: Encoding, name: string): void {
-  switch (encoding) {
-    case "binary":
-    case "base64":
-    case "hex":
-      break;
-
-    default:
-      throw new Error(`${name} must be binary or base64 or hex`);
-  }
-}
-
-function validatePlainTextLength(plainText: Buffer) {
-  if (plainText.length > MAX_PLAINTEXT_LENGTH_BYTES) {
+function validateValue(
+  value: any,
+  validValues: readonly any[],
+  name: string
+): void {
+  if (!validValues.includes(value)) {
     throw new Error(
-      `secretData cannot be larger than ${MAX_PLAINTEXT_LENGTH_BYTES} bytes`
+      `${name} must be one of the following: ${validValues.join(", ")}`
     );
   }
 }
 
-function getAsBuffer(value: Buffer | string): Buffer {
+function getBufferOrStringAsBuffer(value: Buffer | string): Buffer {
   return typeof value === "string" ? Buffer.from(value, "utf-8") : value;
 }
 
-function encodeBuffer(value: Buffer, encoding: Encoding): Buffer | string {
+function decodeBuffer(value: Buffer | string): Buffer {
+  return typeof value === "string" ? Buffer.from(value, "base64") : value;
+}
+
+function encodeBuffer(
+  value: Buffer,
+  encoding: LockedSafeEncoding | UnlockedSafeEncoding
+): Buffer | string {
   switch (encoding) {
+    case "string":
+      return value.toString("utf-8");
+
     case "base64":
-    case "hex":
       return value.toString(encoding);
 
     case "binary":
