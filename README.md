@@ -48,7 +48,7 @@ Further platform support is expected soon.
 
 ## Versions and algorithms
 
-Independent of library versions, AEADSafe defines _algorithm versions_. This intends to be a transparently upgradable abstraction from the actual, underlying AEAD constructions. The `lockSafe` operation always encrypts with the most recent version, encoding the used algorithm version into the output. The backwards compatible `unlockSafe` operation first decodes the used algorithm version, then decrypts and authenticates with the corresponding algorithm.
+Independent of library versions, AEADSafe defines _algorithm versions_. This intends to be a transparently upgradable abstraction from the actual underlying AEAD constructions. The `lockSafe` operation always encrypts with the most recent version, encoding the used algorithm version into the output. The backwards compatible `unlockSafe` operation first decodes the used algorithm version, then decrypts and authenticates with the corresponding algorithm.
 
 ### Version 1 — ChaCha20-Poly1305
 
