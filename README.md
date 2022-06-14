@@ -36,7 +36,7 @@ But if all of the following apply to you, you can also use this library:
 - For some reason, you don't want to use [libsodium](https://github.com/jedisct1/libsodium), which is the best cryptography library out there.
 - You need to encrypt and/or authenticate pieces of information with a symmetric key (then you also need decrypt them sometime in the future).
 - You don't need to or you don't want to deal with low-level cryptographic features, such as key generation, algorithm and parameter selection, etc.
-- You need a self-contained, standalone AEAD structure. All necessary information for decryption/authentication is encoded in the output, except the key.
+- You need a self-contained, standalone AEAD structure, with all necessary information for decryption/authentication encoded into the output, except the key.
 
 ## Supported platforms
 
