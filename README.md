@@ -6,7 +6,7 @@ High-level, misuse-resistant secret key-based cipher library using platform-nati
 
 The term AEAD stands for Authenticated Encryption with Associated Data. An AEAD construction's goal is to simultaneously assure the confidentiality and the authenticity of data. Semantically, an AEAD structure has two components: a secret encrypted component (ciphertext), and a public unencrypted component (associated data). The whole structure is authenticated: any unauthorized change of either the ciphertext or the associated data is detected during decryption.
 
-AEADSafe is a high-level AEAD structure, providing two operations:
+AEADSafe is a high-level AEAD structure. It provides two operations:
 
 1. `lockSafe`
    - input:
