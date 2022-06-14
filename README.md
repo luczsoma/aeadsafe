@@ -50,7 +50,7 @@ Further platform support is expected soon.
 
 Independent of library versions, AEADSafe defines _algorithm versions_. This intends to be a transparently upgradable abstraction from the actual, underlying AEAD constructions. The `lockSafe` operation always encrypts with the most recent version, encoding the used algorithm version into the output. The backwards compatible `unlockSafe` operation first decodes the used algorithm version, then decrypts and authenticates with the corresponding algorithm.
 
-### Version 1 - ChaCha20-Poly1305
+### Version 1 — ChaCha20-Poly1305
 
 The first and most recent AEADSafe algorithm. Secure, fast, and constant-time, even without hardware support ([unlike AES-GCM, which is either just slower or it even leaks your encryption keys in cache timing](https://soatok.blog/2020/07/12/comparison-of-symmetric-encryption-methods)). If `secretData` is bigger than `2^38 - 64` bytes (approximately 256 GiB, [the maximum safe message length for ChaCha20-Poly1305](https://soatok.blog/2020/12/24/cryptographic-wear-out-for-symmetric-encryption)), an exception is thrown. As each `lockSafe` operation generates a fresh key-nonce pair, there are no other restrictions.
 
