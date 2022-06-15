@@ -57,7 +57,10 @@ export function checkLockSafeResultV1(
   assert.deepEqual(lockedSafe, wrappedLockedSafe);
 }
 
-function wrapLockedSafe(version: number, unwrappedLockedSafe: Buffer): Buffer {
+export function wrapLockedSafe(
+  version: number,
+  unwrappedLockedSafe: Buffer
+): Buffer {
   const asn1 = new Sequence({
     value: [
       new Integer({
@@ -72,7 +75,7 @@ function wrapLockedSafe(version: number, unwrappedLockedSafe: Buffer): Buffer {
   return Buffer.from(ber);
 }
 
-function unwrapLockedSafe(wrappedLockedSafe: Buffer): {
+export function unwrapLockedSafe(wrappedLockedSafe: Buffer): {
   version: number;
   unwrappedLockedSafe: Buffer;
 } {
@@ -110,7 +113,7 @@ function unwrapLockedSafe(wrappedLockedSafe: Buffer): {
   };
 }
 
-function encodeUnwrappedLockedSafeV1(
+export function encodeUnwrappedLockedSafeV1(
   initializationVector: Buffer,
   associatedData: Buffer,
   cipherText: Buffer,
@@ -136,7 +139,7 @@ function encodeUnwrappedLockedSafeV1(
   return Buffer.from(ber);
 }
 
-function decodeUnwrappedLockedSafeV1(unwrappedLockedSafe: Buffer): {
+export function decodeUnwrappedLockedSafeV1(unwrappedLockedSafe: Buffer): {
   initializationVector: Buffer;
   associatedData: Buffer;
   cipherText: Buffer;
